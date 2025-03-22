@@ -10,7 +10,8 @@
     "type-check": "tsc -b",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test": "echo 'No tests defined' && exit 0"
   },
   "dependencies": {
     "next": "15.2.3",
@@ -30,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
     "husky": "^8.0.0",
+    "lint-staged": "^15.5.0",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4",
@@ -37,5 +39,14 @@
   },
   "engines": {
     "node": ">18.18.x"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "next lint --fix --file"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
   }
 }
