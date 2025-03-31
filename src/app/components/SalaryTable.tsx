@@ -18,7 +18,6 @@ export function SalaryTable({
   data: SalaryRow[]
   onDataChange: (newData: SalaryRow[]) => void
 }) {
-  console.log("🚀 ~ data:", data)
   const handleEdit = (
     index: number,
     field: keyof SalaryRow,
@@ -63,7 +62,14 @@ export function SalaryTable({
         <TableBody>
           {data.length > 0 ? (
             data.map((row, index) => (
-              <TableRow key={index}>
+              <TableRow
+                key={index}
+                className={`${
+                  index % 2 === 0
+                    ? "bg-gray-100 dark:bg-black"
+                    : "bg-white dark:bg-gray-900"
+                }`}
+              >
                 <TableCell>{index + 1}</TableCell>
                 {Object.keys(row).map((key) =>
                   key !== "status" && key !== "sn" ? (
@@ -77,7 +83,7 @@ export function SalaryTable({
                             e.target.value
                           )
                         }
-                        className="w-full bg-transparent focus:outline-none"
+                        className="min-w-min h-8"
                       />
                     </TableCell>
                   ) : null
