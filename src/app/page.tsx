@@ -15,50 +15,65 @@ export default function Home() {
   const [tableData, setTableData] = useState<SalaryRow[]>([])
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
-  // Stubbed email API call
   const sendEmailToUser = useCallback(
-    async (email: string, month: string): Promise<void> => {
-      console.log("🚀 ~ month:", month)
-      // Replace with your real API endpoint
-      // await fetch(`/api/sendSalaryEmail`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email, month }),
-      // })
-      toast.success(`Sent to ${email}`)
+    async (email: string, month: string, year: string, user: SalaryRow) => {
+      try {
+        const res = await fetch("/api/send-payslip", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userData: user,
+            month: month,
+            year: year,
+            recipientEmail: email,
+          }),
+        })
+
+        if (!res.ok) {
+          const errorData = await res.json()
+          throw new Error(`Failed to send payslip: ${errorData.message}`)
+        }
+
+        const result = await res.json()
+        console.log("✅ Payslip sent successfully:", result)
+        toast.success(`Payslip sent to ${email}`)
+        return result
+      } catch (error) {
+        console.error("❌ Error sending payslip:", error)
+        throw error
+      }
     },
     []
   )
 
   // Queue processing: send one by one
   const processQueue = useCallback(
-    async (month: string) => {
+    async (month: string, year: string) => {
       if (isProcessing) return
       setIsProcessing(true)
 
       const snapshot = [...tableData]
-      for (const { email } of snapshot) {
-        // mark sending
+      for (const row of snapshot) {
         setTableData((rows) =>
           rows.map((r) =>
-            r.email === email
-              ? { ...r, status: "pending" } // Corrected to match the SalaryRow type
-              : r
+            r.email === row.email ? { ...r, status: "pending" } : r
           )
         )
 
         try {
-          await sendEmailToUser(email, month)
-          setTableData((rows) =>
-            rows.map((r) => (r.email === email ? { ...r, status: "sent" } : r))
-          )
-        } catch {
-          toast.error(`Failed for ${email}`)
+          await sendEmailToUser(row.email, month, year, row)
           setTableData((rows) =>
             rows.map((r) =>
-              r.email === email
-                ? { ...r, status: "failed" as "pending" | "sent" }
-                : r
+              r.email === row.email ? { ...r, status: "sent" } : r
+            )
+          )
+        } catch {
+          toast.error(`Failed for ${row.email}`)
+          setTableData((rows) =>
+            rows.map((r) =>
+              r.email === row.email ? { ...r, status: "failed" } : r
             )
           )
         }

@@ -37,13 +37,19 @@ const months = [
   "December",
 ] as const
 
+const currentYear = new Date().getFullYear()
+const years = Array.from({ length: 5 }, (_, i) =>
+  (currentYear - 2 + i).toString()
+)
+
 const schema = z.object({
   month: z.enum(months, { required_error: "Please select a month." }),
+  year: z.string({ required_error: "Please select a year." }),
 })
 type FormValues = z.infer<typeof schema>
 
 interface SendEmailProps {
-  onMonthSelect: (month: string) => void
+  onMonthSelect: (month: string, year: string) => void
   disabled?: boolean
 }
 
@@ -53,15 +59,15 @@ export default function SendEmail({
 }: SendEmailProps) {
   const now = new Date()
   const defaultMonth = months[(now.getMonth() + 11) % 12]
-
+  const defaultYear = now.getFullYear().toString()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { month: defaultMonth },
+    defaultValues: { month: defaultMonth, year: defaultYear },
     mode: "onBlur",
   })
 
   const handleSubmit = (data: FormValues) => {
-    onMonthSelect(data.month)
+    onMonthSelect(data.month, data.year)
   }
 
   return (
@@ -70,6 +76,7 @@ export default function SendEmail({
         onSubmit={form.handleSubmit(handleSubmit)}
         className="flex justify-between items-end gap-10"
       >
+        {/* Month Field */}
         <FormField
           control={form.control}
           name="month"
@@ -98,6 +105,37 @@ export default function SendEmail({
             </FormItem>
           )}
         />
+
+        {/* Year Field */}
+        <FormField
+          control={form.control}
+          name="year"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-base">Salary for Year:</FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Select a year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={y}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           size="lg"

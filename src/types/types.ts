@@ -18,11 +18,14 @@ export interface SalaryRow {
   otAmount: string
   byodIncentive: string
   negativeDays: string
-  amount: string
+  negativeAmount: string
   citDeduction: string
   pfDeduction: string
-  totalTaxDeduction: string
+  taxDeduction: string
   adjustment: string
   netSalary: string
-  status: "pending" | "sent"
+  totalDeduction?: string
+  status: "pending" | "sent" | "failed"
+  month?: string
+  year?: string
 }
