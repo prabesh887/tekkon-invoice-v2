@@ -1,7 +1,6 @@
 import { SalaryRow } from "@/types/types"
 
 function emailTemplate(userData: SalaryRow) {
-  console.log("🚀 ~ emailTemplate ~ userData:", userData)
   return `
  <!DOCTYPE html>
 <html lang="en">
