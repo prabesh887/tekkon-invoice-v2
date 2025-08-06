@@ -33,6 +33,7 @@ export function SalaryTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Status</TableHead>
             <TableHead>S.N.</TableHead>
             <TableHead>Name of the Employee</TableHead>
             <TableHead>Email</TableHead>
@@ -56,7 +57,6 @@ export function SalaryTable({
             <TableHead>Total Tax Deduction</TableHead>
             <TableHead>Adjustment</TableHead>
             <TableHead>Net Salary</TableHead>
-            <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -64,18 +64,27 @@ export function SalaryTable({
             data.map((row, index) => (
               <TableRow
                 key={index}
-                className={`${
+                className={
                   index % 2 === 0
                     ? "bg-gray-100 dark:bg-black"
                     : "bg-white dark:bg-gray-900"
-                }`}
+                }
               >
+                <TableCell>
+                  <Badge
+                    variant={row.status === "sent" ? "success" : "destructive"}
+                    className="capitalize"
+                  >
+                    {row.status}
+                  </Badge>
+                </TableCell>
                 <TableCell>{index + 1}</TableCell>
-                {Object.keys(row).map((key) =>
-                  key !== "status" && key !== "sn" ? (
+                {Object.entries(row).map(([key, value]) => {
+                  if (key === "status" || key === "sn") return null
+                  return (
                     <TableCell key={key}>
                       <input
-                        value={row[key as keyof SalaryRow] as string | number}
+                        value={value as string | number}
                         onChange={(e) =>
                           handleEdit(
                             index,
@@ -86,16 +95,8 @@ export function SalaryTable({
                         className="min-w-min h-8"
                       />
                     </TableCell>
-                  ) : null
-                )}
-                <TableCell>
-                  <Badge
-                    variant={row.status === "sent" ? "default" : "destructive"}
-                    className="capitalize"
-                  >
-                    {row.status}
-                  </Badge>
-                </TableCell>
+                  )
+                })}
               </TableRow>
             ))
           ) : (

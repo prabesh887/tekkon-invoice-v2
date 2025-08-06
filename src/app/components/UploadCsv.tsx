@@ -1,7 +1,8 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { CheckCircle, FileText, Upload } from "lucide-react"
 import Papa from "papaparse"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -14,7 +15,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,9 @@ export default function UploadCsv({
 }: {
   onUpload: (data: SalaryRow[]) => void
 }) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+
   const formSchema = z.object({
     csvFile: z
       .custom<FileList>((val) => val instanceof FileList, "Invalid file input")
@@ -69,9 +72,19 @@ export default function UploadCsv({
     status: "pending",
   })
 
+  const handleFileSelect = (files: FileList | null) => {
+    if (files && files.length > 0) {
+      setSelectedFile(files[0])
+    } else {
+      setSelectedFile(null)
+    }
+  }
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     const file = values.csvFile[0]
     if (!file) return
+
+    setIsProcessing(true)
 
     toast.promise(
       new Promise<SalaryRow[]>((resolve, reject) => {
@@ -117,6 +130,7 @@ export default function UploadCsv({
             )
 
             if (!isValid) {
+              setIsProcessing(false)
               reject("CSV format does not match required structure")
               return
             }
@@ -126,52 +140,166 @@ export default function UploadCsv({
                 results.data as Record<string, string>[]
               ).map(parseCSVRow)
               onUpload(parsedData)
+              setIsProcessing(false)
               resolve(parsedData)
             } catch {
+              setIsProcessing(false)
               reject("Error parsing CSV data")
             }
           },
-          error: (error) => reject(error.message),
+          error: (error) => {
+            setIsProcessing(false)
+            reject(error.message)
+          },
         })
       }),
       {
         loading: "Parsing Salary CSV...",
         success: (data: SalaryRow[]) =>
-          `Processed ${data.length} employee records`,
+          `Successfully processed ${data.length} employee records!`,
         error: (err) => `CSV Error: ${err}`,
       }
     )
   }
 
   return (
-    <section className="">
+    <section className="w-full max-w-2xl mx-auto">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
             control={form.control}
             name="csvFile"
             render={({ field: { onChange, ref } }) => (
               <FormItem>
-                <FormLabel className="block mb-2 text-lg text-center font-medium">
-                  Upload Your CSV File
-                </FormLabel>
                 <FormControl>
-                  <Input
-                    type="file"
-                    id="file_input"
-                    accept=".csv"
-                    onChange={(e) => onChange(e.target.files)}
-                    ref={ref}
-                  />
+                  <div
+                    className={`
+                      relative border-2 rounded-xl p-2 transition-all duration-300 cursor-pointer
+                      ${
+                        selectedFile
+                          ? "border-green-400 bg-green-50"
+                          : "border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50"
+                      }
+                      ${isProcessing ? "pointer-events-none opacity-60" : ""}
+                    `}
+                    onClick={() =>
+                      !isProcessing &&
+                      document.getElementById("file_input")?.click()
+                    }
+                  >
+                    {/* Hidden file input */}
+                    <Input
+                      type="file"
+                      id="file_input"
+                      accept=".csv"
+                      onChange={(e) => {
+                        onChange(e.target.files)
+                        handleFileSelect(e.target.files)
+                      }}
+                      ref={ref}
+                      className="hidden"
+                    />
+
+                    <div className="text-center">
+                      {isProcessing ? (
+                        <div className="animate-spin h-16 w-16 mx-auto mb-4">
+                          <Upload className="h-16 w-16 text-blue-500" />
+                        </div>
+                      ) : selectedFile ? (
+                        <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
+                      ) : (
+                        <Upload className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                      )}
+
+                      {isProcessing ? (
+                        <div>
+                          <p className="text-xl font-semibold text-gray-900 mb-2">
+                            Processing Your File...
+                          </p>
+                          <p className="text-gray-600">
+                            Please wait while we parse your CSV data
+                          </p>
+                        </div>
+                      ) : selectedFile ? (
+                        <div>
+                          <p className="text-xl font-semibold text-gray-900 mb-2">
+                            File Ready to Upload!
+                          </p>
+                          <div className="flex items-center justify-center gap-2 text-gray-600 mb-2">
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium">
+                              {selectedFile.name}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {(selectedFile.size / 1024).toFixed(1)} KB • Click
+                            &quot;Process CSV&quot; to continue
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-xl font-semibold text-gray-900 mb-2">
+                            Click to Choose Your CSV File
+                          </p>
+                          <p className="text-gray-600 mb-4">
+                            Select your salary CSV file from your computer
+                          </p>
+                          {/* <div className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                            <Upload className="h-5 w-5 mr-2" />
+                            Browse Files
+                          </div> */}
+                          <p className="text-xs text-gray-500 mt-4">
+                            Supports: .csv files only (Max 10MB)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-center mt-2" />
               </FormItem>
             )}
           />
+
+          {/* Submit Button */}
           <div className="flex justify-center">
-            <Button size="lg" className="w-1/2" type="submit">
-              Upload
+            <Button
+              size="lg"
+              className={`
+                px-12 py-3 text-lg font-semibold transition-all duration-200
+                ${
+                  selectedFile
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }
+                ${isProcessing ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}
+              `}
+              type="submit"
+              disabled={!selectedFile || isProcessing}
+            >
+              {isProcessing ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Processing...
+                </div>
+              ) : selectedFile ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Process CSV File
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Select File First
+                </div>
+              )}
             </Button>
+          </div>
+
+          {/* Helper Text */}
+          <div className="text-center text-sm text-gray-500">
+            <p>Need help? Make sure your CSV has all the required columns.</p>
+            <p>Check the sample CSV format above for reference.</p>
           </div>
         </form>
       </Form>
