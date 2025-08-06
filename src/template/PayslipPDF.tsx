@@ -2,6 +2,7 @@ import React from "react"
 import {
   Document,
   Font,
+  Link,
   Page,
   StyleSheet,
   Text,
@@ -103,6 +104,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 9,
     color: "#1a1a1a",
+  },
+  normalText: {
+    color: "#666666",
+    textDecoration: "none",
   },
 
   // Attendance Section
@@ -261,14 +266,20 @@ const PayslipInvoicePDF = ({
   userData,
   companyName = "Tekkon Technologies Pvt. Ltd.",
   companyAddress = "Kathmandu, Nepal",
-  companyPan = "123456789",
-  companyEmail = "accounts@tekkon.com.np",
+  companyRegdNo = "184097/074/075",
+  companyPhoneNumber = "+977 9803466217 ",
+  companyPan = "606777234",
+  companyEmail = " info@tekkon.com.np",
+  companyAccountEmail = " accounts@tekkon.com.np",
 }: {
   userData: SalaryRow
   companyName?: string
   companyAddress?: string
   companyPan?: string
   companyEmail?: string
+  companyRegdNo?: string
+  companyPhoneNumber?: string
+  companyAccountEmail?: string
 }) => {
   // Earnings data
   const earnings = [
@@ -294,11 +305,17 @@ const PayslipInvoicePDF = ({
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
             <View style={styles.companySection}>
-              <Text style={styles.companyName}>{companyName}</Text>
+              <Link src="https://tekkon.com.np">
+                <Text style={styles.companyName}>{companyName}</Text>
+              </Link>
               <View style={styles.companyDetails}>
-                <Text>{companyAddress}</Text>
+                <Text>Address: {companyAddress}</Text>
+                <Text>Regd No: {companyRegdNo}</Text>
                 <Text>PAN: {companyPan}</Text>
-                <Text>{companyEmail}</Text>
+                <Text>Phone: {companyPhoneNumber}</Text>
+                <Link src={`mailto:${companyEmail}`} style={styles.normalText}>
+                  <Text>Email: {companyEmail}</Text>
+                </Link>
               </View>
             </View>
           </View>
@@ -459,7 +476,12 @@ const PayslipInvoicePDF = ({
           <Text style={styles.footerText}>
             For any queries regarding this payslip, please contact the{" "}
             <Text style={styles.footerBold}>Accounts Department</Text> at{" "}
-            {companyEmail}
+            <Link
+              style={styles.footerBold}
+              src={`mailto:${companyAccountEmail}`}
+            >
+              <Text>{companyAccountEmail}</Text>
+            </Link>
           </Text>
         </View>
       </Page>

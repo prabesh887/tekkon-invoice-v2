@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await pdfBlob.arrayBuffer()
     const pdfBuffer = Buffer.from(arrayBuffer)
 
+    console.log("Pdf Generated Successfully")
+
     // ✅ Setup nodemailer with SMTP
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -58,6 +60,8 @@ export async function POST(request: NextRequest) {
         user: process.env.AWS_USER_ACCESS_KEY,
         pass: process.env.AWS_SECRET_ACCESS_KEY,
       },
+      logger: true,
+      debug: true,
     })
 
     // ✅ Send email with HTML + PDF attachment
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("Error sending payslip:", err)
     return NextResponse.json(
-      { message: "Failed to send payslip", error: (err as Error).message },
+      { message: "Failed to send payslip", error: (err as Error).message, err },
       { status: 500 }
     )
   }
