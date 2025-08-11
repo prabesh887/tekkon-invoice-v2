@@ -1,34 +1,22 @@
 "use client"
 
 import React, { useCallback, useState } from "react"
-import { Download } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 
 import { SalaryRow } from "@/types/types"
 import Header from "@/components/Header"
 
+import { CsvSample } from "./components/CsvSample"
 import { SalaryTable } from "./components/SalaryTable"
 import SendEmail from "./components/SendEmail"
+import { Button } from "./components/ui/button"
 import { Toaster } from "./components/ui/sonner"
 import UploadCsv from "./components/UploadCsv"
 
 export default function Home() {
   const [tableData, setTableData] = useState<SalaryRow[]>([])
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
-
-  const downloadSampleCSV = () => {
-    // Create a link element and trigger download of the static CSV file
-    const link = document.createElement("a")
-    link.href = "/sample.csv"
-    link.download = "sample-salary-data.csv"
-    link.style.display = "none"
-
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    toast.success("Sample CSV downloaded successfully!")
-  }
 
   const sendEmailToUser = useCallback(
     async (email: string, month: string, year: string, user: SalaryRow) => {
@@ -106,86 +94,39 @@ export default function Home() {
         {tableData.length === 0 ? (
           <div className="space-y-6">
             {/* Sample CSV Download Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-900">
-                    Need a sample CSV file?
-                  </h3>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Download our sample CSV template to see the expected format
-                  </p>
-                </div>
-                <button
-                  onClick={downloadSampleCSV}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  <Download size={16} />
-                  Download Sample CSV
-                </button>
-              </div>
-
-              {/* Expected Columns Table */}
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-3">
-                  Expected CSV Columns:
-                </h4>
-                <div className="bg-white rounded-lg border border-blue-200 overflow-hidden">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0">
-                    {[
-                      "Name of the Employee",
-                      "Email",
-                      "Position",
-                      "PAN Number",
-                      "Account No.",
-                      "W.D.",
-                      "P.D.",
-                      "Gross Salary",
-                      "Basic Salary",
-                      "Lumpsum Allowance",
-                      "Salary Before TDS",
-                      "PF Contribution",
-                      "Overtime Days",
-                      "OT Amount",
-                      "BYOD Incentive",
-                      "Negative Days",
-                      "Amount",
-                      "CIT Deduction",
-                      "PF Deduction",
-                      "Total Tax Deduction",
-                      "Adjustment",
-                      "Net Salary",
-                    ].map((column, index) => (
-                      <div
-                        key={index}
-                        className={`px-3 py-2 text-xs border-b border-r border-blue-100 ${
-                          index % 2 === 0 ? "bg-blue-25" : "bg-white"
-                        }`}
-                      >
-                        <span className="font-medium text-blue-800">
-                          {index + 1}.
-                        </span>
-                        <span className="ml-2 text-blue-700">{column}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600 mt-2">
-                  💡 <strong>Tip:</strong> Make sure your CSV file has exactly
-                  these column headers in the first row
-                </p>
-              </div>
-            </div>
-
+            <CsvSample />
             <UploadCsv onUpload={setTableData} />
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => setTableData([])}
+              title="Back to Upload"
+              className="mb-2 hover:bg-primary hover:text-white"
+            >
+              <ArrowLeft />
+            </Button>
             <div className="flex justify-between mb-6 items-baseline">
+              {/* Back Button */}
               <div>
-                <h1 className="text-3xl font-bold">Salary Table</h1>
-                <p className="text-sm text-muted-foreground">
-                  Click on the cell to edit the value
+                {/* Heading */}
+                <h1 className="text-2xl lg:text-3xl font-bold leading-tight shrink-0">
+                  Salary Table
+                </h1>
+
+                {/* Status Indicator */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    {tableData.length} records
+                  </span>
+                </div>
+
+                {/* Instruction Text */}
+                <p className="text-sm text-muted-foreground lg:flex-1">
+                  Click on any cell to edit the value
                 </p>
               </div>
               <div className="flex items-center gap-3">
