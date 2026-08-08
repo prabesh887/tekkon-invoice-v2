@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import React, { useCallback, useRef, useState } from "react"
 import { ArrowLeft } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { toast } from "sonner"
@@ -9,6 +8,7 @@ import { toast } from "sonner"
 import { SalaryRow } from "@/types/types"
 import Header from "@/components/Header"
 
+import { ConfirmSendModal } from "./components/ConfirmSendModal"
 import { CsvSample } from "./components/CsvSample"
 import { SalaryTable } from "./components/SalaryTable"
 import SendEmail from "./components/SendEmail"
@@ -18,17 +18,12 @@ import UploadCsv from "./components/UploadCsv"
 
 export default function Home() {
   const { status } = useSession()
-  const router = useRouter()
 
   const [tableData, setTableData] = useState<SalaryRow[]>([])
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
-  // Redirect unauthenticated users
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
-    }
-  }, [status, router])
+  const [showConfirm, setShowConfirm] = useState<boolean>(false)
+  const pendingDateRef = useRef<{ month: string; year: string } | null>(null)
 
   const sendEmailToUser = useCallback(
     async (email: string, month: string, year: string, user: SalaryRow) => {
@@ -72,11 +67,9 @@ export default function Home() {
       if (isProcessing) return
       setIsProcessing(true)
 
-      // Take a snapshot of the current table data
       const snapshot = [...tableData]
 
       for (const row of snapshot) {
-        // Set status to pending
         setTableData((rows) =>
           rows.map((r) =>
             r.email === row.email ? { ...r, status: "pending" } : r
@@ -108,7 +101,19 @@ export default function Home() {
     [isProcessing, tableData, sendEmailToUser]
   )
 
-  // Loading States
+  const handleRequestSend = (month: string, year: string) => {
+    pendingDateRef.current = { month, year }
+    setShowConfirm(true)
+  }
+
+  const handleConfirmSend = () => {
+    if (pendingDateRef.current) {
+      const { month, year } = pendingDateRef.current
+      processQueue(month, year)
+      setShowConfirm(false)
+    }
+  }
+
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -128,6 +133,16 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Header />
+
+      <ConfirmSendModal
+        isOpen={showConfirm}
+        onOpenChange={setShowConfirm}
+        onConfirm={handleConfirmSend}
+        recordCount={tableData.length}
+        month={pendingDateRef.current?.month}
+        year={pendingDateRef.current?.year}
+      />
+
       <div className="p-8 pb-20 font-[family-name:var(--font-geist-sans)]">
         {tableData.length === 0 ? (
           <div className="space-y-6">
@@ -135,7 +150,7 @@ export default function Home() {
             <UploadCsv onUpload={setTableData} />
           </div>
         ) : (
-          <div className="w-full overflow-x-auto space-y-4">
+          <div className="w-full space-y-4 overflow-x-auto">
             <Button
               variant="secondary"
               size="icon"
@@ -146,23 +161,23 @@ export default function Home() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div>
                 <h1 className="text-2xl font-bold lg:text-3xl">Salary Table</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-green-500" />
                     {tableData.length} records
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Click on any cell to edit the value
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <SendEmail
-                  onMonthSelect={processQueue}
+                  onMonthSelect={handleRequestSend}
                   disabled={isProcessing}
                 />
               </div>
