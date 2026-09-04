@@ -1,5 +1,13 @@
 import { SalaryRow } from "@/types/types"
 
+const escapeHtml = (value: unknown): string =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+
 function emailTemplate(userData: SalaryRow) {
   return `
  <!DOCTYPE html>
@@ -7,7 +15,7 @@ function emailTemplate(userData: SalaryRow) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekkon Pay Slip - ${userData.month} - ${userData.nameOfTheEmployee}</title>
+    <title>Tekkon Pay Slip - ${escapeHtml(userData.month)} - ${escapeHtml(userData.nameOfTheEmployee)}</title>
     <style>
         /* Reset styles for email clients */
         body, table, td, p, a, h1, h2, h3, h4, h5, h6 {
@@ -279,7 +287,7 @@ function emailTemplate(userData: SalaryRow) {
                                               style='display: block; border: 0px'
                                             />
                                         </div>
-                                        <h1 class="header-title">Salary Statement for ${userData.month} ${userData.year}</h1>
+                                        <h1 class="header-title">Salary Statement for ${escapeHtml(userData.month)} ${escapeHtml(userData.year)}</h1>
                                         <p class="header-subtitle">Your pay slip details are ready for review</p>
                                     </td>
                                 </tr>
@@ -294,8 +302,8 @@ function emailTemplate(userData: SalaryRow) {
                                 <!-- Greeting -->
                                 <tr>
                                     <td style="padding-bottom: 25px;">
-                                        <p>Hello <strong>${userData.nameOfTheEmployee}</strong>,</p>
-                                        <p>Please find your salary details below for the month of ${userData.month} ${userData.year}. This pay slip contains important information about your earnings and deductions.</p>
+                                        <p>Hello <strong>${escapeHtml(userData.nameOfTheEmployee)}</strong>,</p>
+                                        <p>Please find your salary details below for the month of ${escapeHtml(userData.month)} ${escapeHtml(userData.year)}. This pay slip contains important information about your earnings and deductions.</p>
                                     </td>
                                 </tr>
                                 
@@ -308,23 +316,23 @@ function emailTemplate(userData: SalaryRow) {
                                         <table class="info-table">
                                             <tr>
                                                 <td class="info-label">Full Name</td>
-                                                <td class="info-value">${userData.nameOfTheEmployee}</td>
+                                                <td class="info-value">${escapeHtml(userData.nameOfTheEmployee)}</td>
                                             </tr>
                                             <tr>
                                                 <td class="info-label">Position</td>
-                                                <td class="info-value">${userData.position}</td>
+                                                <td class="info-value">${escapeHtml(userData.position)}</td>
                                             </tr>
                                             <tr>
                                                 <td class="info-label">Email Address</td>
-                                                <td class="info-value">${userData.email}</td>
+                                                <td class="info-value">${escapeHtml(userData.email)}</td>
                                             </tr>
                                             <tr>
                                                 <td class="info-label">PAN Number</td>
-                                                <td class="info-value">${userData.panNumber}</td>
+                                                <td class="info-value">${escapeHtml(userData.panNumber)}</td>
                                             </tr>
                                             <tr>
                                                 <td class="info-label">Account Number</td>
-                                                <td class="info-value">${userData.accountNo}</td>
+                                                <td class="info-value">${escapeHtml(userData.accountNo)}</td>
                                             </tr>
                                         </table>
                                     </td>
@@ -344,64 +352,64 @@ function emailTemplate(userData: SalaryRow) {
                                             </tr>
                                             <tr class="earnings-row">
                                                 <td>Basic Salary</td>
-                                                <td>${userData.pd}/${userData.wd}</td>
-                                                <td>${userData.basicSalary}</td>
+                                                <td>${escapeHtml(userData.pd)}/${escapeHtml(userData.wd)}</td>
+                                                <td>${escapeHtml(userData.basicSalary)}</td>
                                             </tr>
                                             <tr class="earnings-row">
                                                 <td>Lumpsum Allowance</td>
                                                 <td>-</td>
-                                                <td>${userData.lumpsumAllowance}</td>
+                                                <td>${escapeHtml(userData.lumpsumAllowance)}</td>
                                             </tr>
                                             <tr class="earnings-row">
                                                 <td>Overtime Pay</td>
-                                                <td>${userData.overtimeDays} days</td>
-                                                <td>${userData.otAmount}</td>
+                                                <td>${escapeHtml(userData.overtimeDays)} days</td>
+                                                <td>${escapeHtml(userData.otAmount)}</td>
                                             </tr>
                                             <tr class="earnings-row">
                                                 <td>BYOD Incentive</td>
                                                 <td>-</td>
-                                                <td>${userData.byodIncentive}</td>
+                                                <td>${escapeHtml(userData.byodIncentive)}</td>
                                             </tr>
                                             <tr class="highlight-row">
                                                 <td><strong>Gross Salary</strong></td>
                                                 <td></td>
-                                                <td><strong>${userData.grossSalary}</strong></td>
+                                                <td><strong>${escapeHtml(userData.grossSalary)}</strong></td>
                                             </tr>
                                             <tr class="deductions-row">
                                                 <td>PF Contribution</td>
                                                 <td>-</td>
-                                                <td>${userData.pfContribution}</td>
+                                                <td>${escapeHtml(userData.pfContribution)}</td>
                                             </tr>
                                             
                                             <tr class="deductions-row">
                                                 <td>CIT Deduction</td>
                                                 <td>-</td>
-                                                <td>${userData.citDeduction}</td>
+                                                <td>${escapeHtml(userData.citDeduction)}</td>
                                             </tr>
                                              <tr class="deductions-row">
                                                 <td>Negative Days</td>
-                                                <td>${userData.negativeDays}</td>
-                                                <td>${userData.negativeAmount}</td>
+                                                <td>${escapeHtml(userData.negativeDays)}</td>
+                                                <td>${escapeHtml(userData.negativeAmount)}</td>
                                             </tr>
                                             <tr class="deductions-row">
                                                 <td>Adjustments</td>
                                                 <td>-</td>
-                                                <td>${userData.adjustment}</td>
+                                                <td>${escapeHtml(userData.adjustment)}</td>
                                             </tr>
                                             <tr class="deductions-row">
                                                 <td>Income Tax Deduction</td>
                                                 <td>-</td>
-                                                <td>${userData.taxDeduction}</td>
+                                                <td>${escapeHtml(userData.taxDeduction)}</td>
                                             </tr>
                                             <tr class="highlight-row">
                                                 <td><strong>Total Deductions</strong></td>
                                                 <td></td>
-                                                <td><strong>${userData.totalDeduction}</strong></td>
+                                                <td><strong>${escapeHtml(userData.totalDeduction)}</strong></td>
                                             </tr>
                                             <tr class="net-salary-row">
                                                 <td><strong>Net Salary Payable</strong></td>
                                                 <td></td>
-                                                <td><strong>${userData.netSalary}</strong></td>
+                                                <td><strong>${escapeHtml(userData.netSalary)}</strong></td>
                                             </tr>
                                         </table>
                                     </td>
@@ -413,15 +421,15 @@ function emailTemplate(userData: SalaryRow) {
                                         <div class="summary-box">
                                             <div class="summary-item">
                                                 <div class="summary-label">Total Earnings:</div>
-                                                <div class="summary-value">Rs. ${userData.grossSalary}.00</div>
+                                                <div class="summary-value">Rs. ${escapeHtml(userData.grossSalary)}.00</div>
                                             </div>
                                             <div class="summary-item">
                                                 <div class="summary-label">Total Deductions:</div>
-                                                <div class="summary-value">Rs. ${userData.totalDeduction}.00</div>
+                                                <div class="summary-value">Rs. ${escapeHtml(userData.totalDeduction)}.00</div>
                                             </div>
                                             <div class="summary-item">
                                                 <div class="summary-label">Net Pay:</div>
-                                                <div class="summary-value">Rs. ${userData.netSalary}.00</div>
+                                                <div class="summary-value">Rs. ${escapeHtml(userData.netSalary)}.00</div>
                                             </div>
                                         </div>
                                     </td>

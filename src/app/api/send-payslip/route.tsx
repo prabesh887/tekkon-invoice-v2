@@ -7,93 +7,224 @@ import PayslipPDF from "template/PayslipPDF"
 
 import { SalaryRow } from "@/types/types"
 
-// 🔁 Force Node.js runtime so Buffer, toBuffer, and nodemailer work
+// Force Node.js runtime for Buffer, React PDF, and Nodemailer.
 export const runtime = "nodejs"
+
+/**
+ * Reuse the SMTP transporter when the Vercel function
+ * instance stays warm.
+ */
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: true,
+
+  auth: {
+    user: process.env.AWS_USER_ACCESS_KEY,
+    pass: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+
+  // Enable detailed SMTP logs only during development.
+  logger: process.env.NODE_ENV !== "production",
+  debug: process.env.NODE_ENV !== "production",
+
+  // Reuse SMTP connections where possible.
+  pool: true,
+  maxConnections: 2,
+  maxMessages: 50,
+})
+
+/**
+ * Convert values such as:
+ *
+ * "25,000" → 25000
+ * "1,500.50" → 1500.50
+ * undefined → 0
+ */
+function parseAmount(value: string | number | undefined | null): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0
+  }
+
+  return (
+    Number(
+      String(value ?? "0")
+        .replace(/,/g, "")
+        .trim()
+    ) || 0
+  )
+}
+
+/**
+ * Basic email validation.
+ */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { userData, month, year, recipientEmail } =
-      (await request.json()) as {
-        userData: SalaryRow
-        month: string
-        year: string
-        recipientEmail: string
-      }
+    // ---------------------------------------------------------
+    // Parse request body
+    // ---------------------------------------------------------
 
-    if (!userData || !month || !recipientEmail) {
+    const body = await request.json()
+
+    const { userData, month, year, recipientEmail } = body as {
+      userData?: SalaryRow
+      month?: string
+      year?: string
+      recipientEmail?: string
+    }
+
+    // ---------------------------------------------------------
+    // Validate required fields
+    // ---------------------------------------------------------
+
+    if (!userData || !month || !year || !recipientEmail) {
       return NextResponse.json(
-        { message: "Missing required fields" },
+        {
+          success: false,
+          message: "Missing required fields",
+        },
         { status: 400 }
       )
     }
 
-    // Inject month and year into userData
-    userData.month = month
-    userData.year = year
+    // ---------------------------------------------------------
+    // Validate email
+    // ---------------------------------------------------------
 
-    // 💵 Helper: parse string amounts like '25,000' to numbers
-    const parseAmount = (str: string | undefined | null) =>
-      Number((str ?? "0").replace(/,/g, "")) || 0
+    if (!isValidEmail(recipientEmail)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid recipient email",
+        },
+        { status: 400 }
+      )
+    }
 
-    // ✅ Calculate total deduction and format it with commas
-    userData.totalDeduction = (
-      parseAmount(userData.citDeduction) +
-      parseAmount(userData.pfDeduction) +
-      parseAmount(userData.taxDeduction) +
-      parseAmount(userData.adjustment) +
-      parseAmount(userData.negativeAmount)
-    ).toLocaleString("en-US")
+    // ---------------------------------------------------------
+    // Make sure recipient matches employee record
+    // ---------------------------------------------------------
 
-    // ✅ Generate PDF buffer using @react-pdf/renderer
-    const pdfBlob = await pdf(<PayslipPDF userData={userData} />).toBlob()
+    if (
+      userData.email &&
+      userData.email.toLowerCase() !== recipientEmail.toLowerCase()
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Recipient email does not match employee record.",
+        },
+        { status: 400 }
+      )
+    }
+
+    // ---------------------------------------------------------
+    // Create a new payslip object.
+    //
+    // Do NOT mutate userData received from the browser.
+    // ---------------------------------------------------------
+
+    const payslipData: SalaryRow = {
+      ...userData,
+      month,
+      year,
+    }
+
+    // ---------------------------------------------------------
+    // Calculate total deductions
+    // ---------------------------------------------------------
+
+    const totalDeduction =
+      parseAmount(payslipData.citDeduction) +
+      parseAmount(payslipData.pfDeduction) +
+      parseAmount(payslipData.taxDeduction) +
+      parseAmount(payslipData.adjustment) +
+      parseAmount(payslipData.negativeAmount)
+
+    payslipData.totalDeduction = totalDeduction.toLocaleString("en-US")
+
+    // ---------------------------------------------------------
+    // Generate PDF
+    // ---------------------------------------------------------
+
+    console.time("payslip-pdf")
+
+    const pdfBlob = await pdf(<PayslipPDF userData={payslipData} />).toBlob()
+
+    // React PDF gives us a Blob.
+    // Convert it to a Node.js Buffer for Nodemailer.
     const arrayBuffer = await pdfBlob.arrayBuffer()
     const pdfBuffer = Buffer.from(arrayBuffer)
 
-    console.log("Pdf Generated Successfully")
+    console.timeEnd("payslip-pdf")
 
-    // ✅ Setup nodemailer with SMTP
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: true,
-      auth: {
-        user: process.env.AWS_USER_ACCESS_KEY,
-        pass: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-      logger: true,
-      debug: true,
-    })
+    // ---------------------------------------------------------
+    // Generate email HTML
+    // ---------------------------------------------------------
 
-    // ✅ Send email with HTML + PDF attachment
-    await transporter.sendMail({
+    const html = await emailTemplate(payslipData)
+
+    // ---------------------------------------------------------
+    // Send email
+    // ---------------------------------------------------------
+
+    console.time("send-email")
+
+    const info = await transporter.sendMail({
       from: `"Tekkon Accounts" <${process.env.EMAIL_FROM}>`,
       to: recipientEmail,
-      subject: `Payslip for ${month} - ${userData.year}`,
-      html: await emailTemplate(userData),
+
+      subject: `Payslip for ${month} - ${year}`,
+
+      html,
+
       attachments: [
         {
-          filename: `Payslip-${month}.pdf`,
-          content: pdfBuffer, // now it's a valid Buffer
+          filename: `Payslip-${month}-${year}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
         },
       ],
     })
 
+    console.timeEnd("send-email")
+
+    // ---------------------------------------------------------
+    // Log only safe information
+    // ---------------------------------------------------------
+
+    console.log("Payslip sent successfully:", {
+      recipientEmail,
+      messageId: info.messageId,
+    })
+
+    // ---------------------------------------------------------
+    // Return success
+    // ---------------------------------------------------------
+
     return NextResponse.json(
-      { message: "Payslip sent successfully", recipientEmail },
+      {
+        success: true,
+        message: "Payslip sent successfully",
+        recipientEmail,
+      },
       { status: 200 }
     )
-  } catch (err) {
-    console.error("Error sending payslip:", err)
+  } catch (error) {
+    // Log the detailed error on the server.
+    console.error("Payslip sending failed:", error)
+
+    // Never expose SMTP/internal errors to the browser.
     return NextResponse.json(
-      { message: "Failed to send payslip", error: (err as Error).message, err },
+      {
+        success: false,
+        message: "Unable to send payslip. Please try again.",
+      },
       { status: 500 }
     )
   }
-}
-
-// Optionally increase the response limit for large PDFs
-export const config = {
-  api: {
-    responseLimit: "10mb",
-  },
 }
