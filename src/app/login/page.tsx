@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 import { signIn } from "next-auth/react"
 
@@ -22,9 +22,6 @@ const LOGIN_IMAGE =
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/"
-
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -46,7 +43,7 @@ export default function LoginPage() {
         if (result?.error) {
           setError("Incorrect username or password. Please try again.")
         } else {
-          router.push(callbackUrl)
+          router.push("/")
           router.refresh()
         }
       } catch {
