@@ -296,7 +296,7 @@ const PayslipInvoicePDF = ({
                 <Text>Address: {companyAddress}</Text>
                 <Text>Regd No: {companyRegdNo}</Text>
                 <Text>PAN: {companyPan}</Text>
-                <Text>Phone: {companyPhoneNumber}</Text>
+                {/* <Text>Phone: {companyPhoneNumber}</Text> */}
                 <Link src={`mailto:${companyEmail}`} style={styles.normalText}>
                   <Text>Email: {companyEmail}</Text>
                 </Link>

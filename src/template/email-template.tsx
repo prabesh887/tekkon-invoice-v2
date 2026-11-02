@@ -458,12 +458,12 @@ function emailTemplate(userData: SalaryRow) {
                                         <div class="contact-info">
                                             <div class="contact-item">
                                                 <div class="contact-icon">📧</div>
-                                                <div class="contact-text" style="color:white;">accounts@tekkon.com</div>
+                                                <div class="contact-text" style="color:#ffffff !important;">accounts@tekkon.com.np</div>
                                             </div>
-                                            <div class="contact-item">
-                                                <div class="contact-icon">📱</div>
-                                                <div class="contact-text">+977 9803466217</div>
-                                            </div>
+                                            // <div class="contact-item">
+                                            //     <div class="contact-icon">📱</div>
+                                            //     <div class="contact-text">+977 9803466217</div>
+                                            // </div>
                                             <div class="contact-item">
                                                 <div class="contact-icon">🕒</div>
                                                 <div class="contact-text">Mon-Fri, 9:00 AM - 5:30 PM</div>
