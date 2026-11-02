@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
-import { auth } from "auth"
+import { auth } from "@/auth"
 
 export default auth((req) => {
-  console.log("🔹 Middleware invoked for:", req.nextUrl.pathname)
   const isLoggedIn = !!req.auth
   const isLoginPage = req.nextUrl.pathname === "/login"
   const isApiRoute = req.nextUrl.pathname.startsWith("/api")

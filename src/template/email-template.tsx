@@ -1,4 +1,4 @@
-import { SalaryRow } from "@/types/types"
+import type { SalaryRow } from "@/types/types"
 
 const escapeHtml = (value: unknown): string =>
   String(value)
