@@ -122,8 +122,6 @@ export default function UploadCsv({
             ]
 
             const headers = results.meta.fields || []
-            console.log("🚀 ~ onSubmit ~ headers:", headers)
-            console.log("🚀 ~ data:", results.data)
             // Check that for every required header group, at least one acceptable header exists.
             const isValid = requiredHeaderGroups.every((group) =>
               group.some((header) => headers.includes(header))

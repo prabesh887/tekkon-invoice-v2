@@ -1,7 +1,6 @@
 import React from "react"
 import {
   Document,
-  Font,
   Link,
   Page,
   StyleSheet,
@@ -11,24 +10,9 @@ import {
 
 import { SalaryRow } from "@/types/types"
 
-// Register Lato font (compatible with @react-pdf/renderer)
-Font.register({
-  family: "Lato",
-  fonts: [
-    {
-      src: "https://fonts.gstatic.com/s/lato/v11/qIIYRU-oROkIk8vfvxw6QvesZW2xOQ-xsNqO47m55DA.woff",
-      fontWeight: "normal",
-    },
-    {
-      src: "https://fonts.gstatic.com/s/lato/v11/qdgUG4U09HnJwhYI-uK18wLUuEpTyoUstqEm5AMlJo4.woff",
-      fontWeight: "bold",
-    },
-  ],
-})
-
 const styles = StyleSheet.create({
   page: {
-    fontFamily: "Lato",
+    fontFamily: "Helvetica",
     fontSize: 11,
     lineHeight: 1.4,
     padding: 32,
@@ -312,7 +296,7 @@ const PayslipInvoicePDF = ({
                 <Text>Address: {companyAddress}</Text>
                 <Text>Regd No: {companyRegdNo}</Text>
                 <Text>PAN: {companyPan}</Text>
-                <Text>Phone: {companyPhoneNumber}</Text>
+                {/* <Text>Phone: {companyPhoneNumber}</Text> */}
                 <Link src={`mailto:${companyEmail}`} style={styles.normalText}>
                   <Text>Email: {companyEmail}</Text>
                 </Link>
