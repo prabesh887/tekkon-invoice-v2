@@ -233,6 +233,12 @@ function emailTemplate(userData: SalaryRow) {
             vertical-align: middle;
             padding: 5px 0;
         }
+        .contact-link,
+        .contact-link span,
+        .footer a[x-apple-data-detectors] {
+            color: #ffffff !important;
+            text-decoration: none !important;
+        }
         .contact-icon {
             width: 30px;
             color: #ff9900;
@@ -458,12 +464,8 @@ function emailTemplate(userData: SalaryRow) {
                                         <div class="contact-info">
                                             <div class="contact-item">
                                                 <div class="contact-icon">📧</div>
-                                                <div class="contact-text" style="color:#ffffff !important;">accounts@tekkon.com.np</div>
+                                                <div class="contact-text" style="color:#ffffff !important;"><a href="mailto:accounts@tekkon.com.np" class="contact-link" style="color:#ffffff !important; text-decoration:none !important;"><span style="color:#ffffff !important;">accounts@tekkon.com.np</span></a></div>
                                             </div>
-                                            // <div class="contact-item">
-                                            //     <div class="contact-icon">📱</div>
-                                            //     <div class="contact-text">+977 9803466217</div>
-                                            // </div>
                                             <div class="contact-item">
                                                 <div class="contact-icon">🕒</div>
                                                 <div class="contact-text">Mon-Fri, 9:00 AM - 5:30 PM</div>
