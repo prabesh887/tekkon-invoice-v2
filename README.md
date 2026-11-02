@@ -14,11 +14,13 @@ pnpm dev
 bun dev
 ```
 
-# Generate a bcrypt hash:
+# Generate ADMIN_PASSWORD_HASH (base64-encoded bcrypt hash):
 
 ```bash
-- node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('password-here', 10).then(h=>console.log(h));"
+node -e "require('bcryptjs').hash('password-here', 10).then(h=>console.log(Buffer.from(h).toString('base64')))"
 ```
+
+Paste the output as-is into `.env` and Vercel (no quotes needed). Base64 avoids the `$` characters in bcrypt hashes being treated as variables.
 
 # Generate AUTH_SECRET:
 

@@ -21,6 +21,16 @@ const interval = setInterval(() => {
 
 interval.unref?.()
 
+// The hash is stored base64-encoded so its "$" characters aren't expanded by
+// .env loaders. A raw bcrypt hash ("$2a$"/"$2b$"/"$2y$") is still accepted.
+function decodePasswordHash(value: string): string {
+  const trimmed = value.trim()
+  if (/^\$2[aby]\$/.test(trimmed)) {
+    return trimmed
+  }
+  return Buffer.from(trimmed, "base64").toString("utf8").trim()
+}
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -64,7 +74,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           return null
         }
 
-        const isValid = await bcrypt.compare(password, adminPasswordHash)
+        const isValid = await bcrypt.compare(
+          password,
+          decodePasswordHash(adminPasswordHash)
+        )
 
         if (!isValid) {
           loginRateLimiter.recordFailure(ip)
