@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  getRowErrors,
   MAX_DAYS,
   MAX_SALARY_AMOUNT,
   parseAmount,
@@ -172,5 +173,60 @@ describe("sanityCheckValues", () => {
       grossSalary: String(MAX_SALARY_AMOUNT),
     })
     expect(errors).toEqual([])
+  })
+})
+
+describe("getRowErrors", () => {
+  const validRow = {
+    nameOfTheEmployee: "Jane Doe",
+    email: "jane@example.com",
+    position: "Engineer",
+    grossSalary: "115,000",
+    netSalary: "90,000",
+  }
+
+  it("returns no errors for a valid row", () => {
+    expect(getRowErrors(validRow)).toEqual({})
+  })
+
+  it.each([
+    ["-", 'Use 0 instead of "-"'],
+    [" 25,000 ", "Remove the extra spaces"],
+    ["25000", "Add thousand separators, e.g. 25,000"],
+    ["-1,500", "Negative amounts are not allowed"],
+    ["(1,500)", "Negative amounts are not allowed"],
+    ["1,500.333", "Use at most 2 decimal places"],
+    ["abc", "Use a number like 25,000 or 1,500.50"],
+  ])("explains why amount %j is invalid", (value, message) => {
+    expect(getRowErrors({ ...validRow, citDeduction: value })).toEqual({
+      citDeduction: message,
+    })
+  })
+
+  it("flags emails with extra spaces", () => {
+    expect(getRowErrors({ ...validRow, email: "jane@example.com " })).toEqual({
+      email: "Remove the extra spaces",
+    })
+  })
+
+  it("flags missing required fields", () => {
+    expect(getRowErrors({ ...validRow, position: undefined })).toEqual({
+      position: "Required",
+    })
+  })
+
+  it("reports every invalid cell in the row", () => {
+    const errors = getRowErrors({
+      ...validRow,
+      email: "not-an-email",
+      taxDeduction: "-",
+    })
+    expect(Object.keys(errors).sort()).toEqual(["email", "taxDeduction"])
+  })
+
+  it("includes sanity check problems", () => {
+    expect(getRowErrors({ ...validRow, wd: "999" })).toEqual({
+      wd: "Working days exceeds the maximum allowed",
+    })
   })
 })

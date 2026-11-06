@@ -6,6 +6,7 @@ import { pdf } from "@react-pdf/renderer"
 import nodemailer from "nodemailer"
 
 import { SalaryRow } from "@/types/types"
+import { logger, serializeError } from "@/lib/logger"
 import {
   parseAmount,
   payslipRequestSchema,
@@ -30,9 +31,12 @@ const transporter = nodemailer.createTransport({
     pass: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
-  // Enable detailed SMTP logs only during development.
-  logger: process.env.NODE_ENV !== "production",
-  debug: process.env.NODE_ENV !== "production",
+  // Full SMTP traces print every email's HTML and PDF (salary data
+  // included), so they are off unless SMTP_DEBUG=true is set while
+  // debugging a connection problem. Each send still logs one
+  // payslip.sent / payslip.failed line via @/lib/logger.
+  logger: process.env.SMTP_DEBUG === "true",
+  debug: process.env.SMTP_DEBUG === "true",
 
   // Reuse SMTP connections where possible.
   pool: true,
@@ -91,11 +95,12 @@ const sendCleanupInterval = setInterval(() => {
 
 sendCleanupInterval.unref?.()
 
-function rateLimitedResponse(windowMs: number) {
+function rateLimitedResponse(windowMs: number, requestId: string) {
   return NextResponse.json(
     {
       success: false,
       message: "Too many payslip requests. Please try again later.",
+      requestId,
     },
     {
       status: 429,
@@ -106,13 +111,25 @@ function rateLimitedResponse(windowMs: number) {
   )
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const ip = getClientIp(request)
+/** Which step of the send was running, so failures say where they broke. */
+type SendStage = "parse" | "validate" | "pdf" | "template" | "smtp"
 
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+  const startedAt = Date.now()
+  const ip = getClientIp(request)
+  let log = logger.child({
+    requestId,
+    vercelId: request.headers.get("x-vercel-id") ?? undefined,
+    ip,
+  })
+  let stage: SendStage = "parse"
+
+  try {
     // Block early before doing any work.
     if (ipSendLimiter.isBlocked(ip)) {
-      return rateLimitedResponse(IP_SEND_WINDOW_MS)
+      log.warn("payslip.rejected", { reason: "ip_rate_limited" })
+      return rateLimitedResponse(IP_SEND_WINDOW_MS, requestId)
     }
 
     // ---------------------------------------------------------
@@ -123,26 +140,38 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json()
     } catch {
+      log.warn("payslip.rejected", { reason: "invalid_json" })
       return NextResponse.json(
-        { success: false, message: "Invalid JSON body" },
+        { success: false, message: "Invalid JSON body", requestId },
         { status: 400 }
       )
     }
 
+    stage = "validate"
     const parsed = payslipRequestSchema.safeParse(body)
 
     if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => i.message)
+      log.warn("payslip.rejected", { reason: "validation_failed", issues })
       return NextResponse.json(
         {
           success: false,
           message: "Validation failed",
-          issues: parsed.error.issues.map((i) => i.message),
+          issues,
+          requestId,
         },
         { status: 400 }
       )
     }
 
     const { userData, month, year, recipientEmail } = parsed.data
+
+    // Every log line from here on can be found by email or period.
+    log = log.child({
+      recipientEmail,
+      employee: userData.nameOfTheEmployee,
+      period: `${month}-${year}`,
+    })
 
     // ---------------------------------------------------------
     // Make sure recipient matches employee record
@@ -152,10 +181,15 @@ export async function POST(request: NextRequest) {
       userData.email &&
       userData.email.toLowerCase() !== recipientEmail.toLowerCase()
     ) {
+      log.warn("payslip.rejected", {
+        reason: "recipient_mismatch",
+        recordEmail: userData.email,
+      })
       return NextResponse.json(
         {
           success: false,
           message: "Recipient email does not match employee record.",
+          requestId,
         },
         { status: 400 }
       )
@@ -175,10 +209,15 @@ export async function POST(request: NextRequest) {
     const sanityErrors = sanityCheckValues(userData)
 
     if (sanityErrors.length > 0) {
+      log.warn("payslip.rejected", {
+        reason: "sanity_check_failed",
+        issues: sanityErrors,
+      })
       return NextResponse.json(
         {
           success: false,
           message: sanityErrors.join(". "),
+          requestId,
         },
         { status: 400 }
       )
@@ -186,7 +225,8 @@ export async function POST(request: NextRequest) {
 
     // Cap how often the same address can be emailed.
     if (recipientSendLimiter.isBlocked(recipientEmail)) {
-      return rateLimitedResponse(RECIPIENT_SEND_WINDOW_MS)
+      log.warn("payslip.rejected", { reason: "recipient_rate_limited" })
+      return rateLimitedResponse(RECIPIENT_SEND_WINDOW_MS, requestId)
     }
 
     // Count this send against both windows before contacting SMTP.
@@ -208,6 +248,7 @@ export async function POST(request: NextRequest) {
     // Generate PDF
     // ---------------------------------------------------------
 
+    stage = "pdf"
     const pdfBlob = await pdf(<PayslipPDF userData={payslipData} />).toBlob()
 
     // React PDF gives us a Blob.
@@ -219,13 +260,15 @@ export async function POST(request: NextRequest) {
     // Generate email HTML
     // ---------------------------------------------------------
 
+    stage = "template"
     const html = await emailTemplate(payslipData)
 
     // ---------------------------------------------------------
     // Send email
     // ---------------------------------------------------------
 
-    await transporter.sendMail({
+    stage = "smtp"
+    const info = await transporter.sendMail({
       from: `"Tekkon Accounts" <${process.env.EMAIL_FROM}>`,
       to: recipientEmail,
 
@@ -242,25 +285,39 @@ export async function POST(request: NextRequest) {
       ],
     })
 
+    // "Sent" means SES accepted the message. Bounces or spam-folder
+    // delivery happen later and are only visible in SES itself.
+    log.info("payslip.sent", {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      smtpResponse: info.response,
+      pdfBytes: pdfBuffer.length,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json(
       {
         success: true,
         message: "Payslip sent successfully",
         recipientEmail,
+        requestId,
       },
       { status: 200 }
     )
   } catch (error) {
-    // Log the detailed error on the server (server-only, no PII exposed).
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Payslip sending failed:", error)
-    }
+    log.error("payslip.failed", {
+      stage,
+      durationMs: Date.now() - startedAt,
+      error: serializeError(error),
+    })
 
     // Never expose SMTP/internal errors to the browser.
     return NextResponse.json(
       {
         success: false,
         message: "Unable to send payslip. Please try again.",
+        requestId,
       },
       { status: 500 }
     )

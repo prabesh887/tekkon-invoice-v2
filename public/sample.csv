@@ -1,2 +1,6 @@
 S.N.,Name of the Employee,Email,Position,PAN Number,Account Number,W.D.,P.D.,Gross salary,Basic Salary,Lumpsum Allowance,Salary Before TDS,PF Contribution,OT Days,OT Amount,BYOD Incentive,Negative Days,Amount,CIT Deduction,PF Deduction,Total Tax Deduction,Adjustment,Net Salary
 1,John Doe,john.doe@company.com,Full Stack Developer,11111000,32360111111,28,28,"115,000","46,000","69,000","115,000","6,000",0,0,"2,000",0,0,"25,000","12,000","20,570",0,"90,000"
+2,Sita Sharma,sita.sharma@company.com,QA Engineer,11111000,32360111111,28,28,"115,000","46,000","69,000","115,000","6,000",0,0,"2,000",0,0,-,"12,000","20,570",0,"90,000"
+3,Ram Thapa,"ram.thapa@company.com ",DevOps Engineer,11111000,32360111111,28,28,"115,000","46,000","69,000","115,000","6,000",0,0,"2,000",0,0,"25,000","12,000","20,570",0,"90,000"
+4,Gita Rai,gita.rai@company.com,Designer,11111000,32360111111,28,28,115000,"46,000","69,000","115,000","6,000",0,0,"2,000",0,0,"25,000","12,000","20,570",0,"90,000"
+5,Hari KC,hari.kc.company.com,Backend Developer,11111000,32360111111,28,28,"115,000","46,000","69,000","115,000","6,000",0,0,"2,000",0,0,"25,000","12,000","20,570",0,"90,000"

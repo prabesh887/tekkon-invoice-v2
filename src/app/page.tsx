@@ -1,11 +1,17 @@
 "use client"
 
-import React, { useCallback, useRef, useState } from "react"
-import { ArrowLeft } from "lucide-react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
+import { AlertCircle, ArrowLeft } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 import { SalaryRow } from "@/types/types"
+import {
+  FIELD_LABELS,
+  getRowErrors,
+  hasRowErrors,
+  RowErrors,
+} from "@/lib/payslip-validation"
 import Header from "@/components/Header"
 
 import { ConfirmSendModal } from "./components/ConfirmSendModal"
@@ -16,12 +22,33 @@ import { Button } from "./components/ui/button"
 import { Toaster } from "./components/ui/sonner"
 import UploadCsv from "./components/UploadCsv"
 
+const MAX_LISTED_ERRORS = 15
+
 export default function Home() {
   const { status } = useSession()
 
   const [tableData, setTableData] = useState<SalaryRow[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  // Re-validated on every edit, so errors clear as cells are fixed.
+  const rowErrors = useMemo(() => tableData.map(getRowErrors), [tableData])
+
+  const invalidRowCount = tableData.filter(
+    (row, index) => row.status !== "sent" && hasRowErrors(rowErrors[index])
+  ).length
+
+  // One line per bad cell, e.g. "Row 2 (Jane) · CIT Deduction: Use 0…".
+  const errorSummary = tableData.flatMap((row, index) =>
+    row.status === "sent"
+      ? []
+      : Object.entries(rowErrors[index]).map(
+          ([field, message]) =>
+            `Row ${index + 1} (${row.nameOfTheEmployee || "no name"}) · ${
+              FIELD_LABELS[field as keyof RowErrors]
+            }: ${message}`
+        )
+  )
 
   const pendingDateRef = useRef<{
     month: string
@@ -56,6 +83,7 @@ export default function Home() {
       let result: {
         success?: boolean
         message?: string
+        requestId?: string
       } = {}
 
       try {
@@ -65,8 +93,12 @@ export default function Home() {
       }
 
       if (!response.ok) {
-        throw new Error(
+        const message =
           result.message || `Failed to send payslip (${response.status})`
+
+        // The request ID matches the server logs, so it can be traced later.
+        throw new Error(
+          result.requestId ? `${message} (ref: ${result.requestId})` : message
         )
       }
 
@@ -150,6 +182,13 @@ export default function Home() {
         return
       }
 
+      if (invalidRowCount > 0) {
+        toast.error(
+          `Fix the ${invalidRowCount} highlighted row(s) before sending.`
+        )
+        return
+      }
+
       pendingDateRef.current = {
         month,
         year,
@@ -157,7 +196,7 @@ export default function Home() {
 
       setShowConfirm(true)
     },
-    [isProcessing, tableData.length]
+    [isProcessing, tableData.length, invalidRowCount]
   )
 
   const handleConfirmSend = useCallback(() => {
@@ -180,6 +219,13 @@ export default function Home() {
       return
     }
 
+    if (invalidRowCount > 0) {
+      toast.error(
+        `Fix the ${invalidRowCount} highlighted row(s) before retrying.`
+      )
+      return
+    }
+
     const { month, year } = pendingDateRef.current
 
     const failedRows = tableData.filter((row) => row.status === "failed")
@@ -190,7 +236,7 @@ export default function Home() {
     }
 
     void processQueue(month, year, failedRows)
-  }, [isProcessing, tableData, processQueue])
+  }, [isProcessing, invalidRowCount, tableData, processQueue])
 
   const handleReset = useCallback(() => {
     if (isProcessing) {
@@ -285,14 +331,18 @@ export default function Home() {
 
               <div className="flex items-center gap-3">
                 {failedCount > 0 && !isProcessing && (
-                  <Button variant="outline" onClick={handleRetryFailed}>
+                  <Button
+                    variant="outline"
+                    onClick={handleRetryFailed}
+                    disabled={invalidRowCount > 0}
+                  >
                     Retry Failed ({failedCount})
                   </Button>
                 )}
 
                 <SendEmail
                   onMonthSelect={handleRequestSend}
-                  disabled={isProcessing}
+                  disabled={isProcessing || invalidRowCount > 0}
                 />
               </div>
             </div>
@@ -315,7 +365,40 @@ export default function Home() {
               </div>
             )}
 
-            <SalaryTable data={tableData} onDataChange={setTableData} />
+            {invalidRowCount > 0 && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium">
+                    {invalidRowCount} of {tableData.length} rows have data
+                    problems. Sending is disabled until they are fixed.
+                  </p>
+                  <p className="mt-1">
+                    Fix the highlighted cells below, or correct the CSV and
+                    upload it again.
+                  </p>
+                  <ul className="mt-2 list-disc space-y-0.5 pl-5">
+                    {errorSummary.slice(0, MAX_LISTED_ERRORS).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  {errorSummary.length > MAX_LISTED_ERRORS && (
+                    <p className="mt-1">
+                      …and {errorSummary.length - MAX_LISTED_ERRORS} more.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <SalaryTable
+              data={tableData}
+              errors={rowErrors}
+              onDataChange={setTableData}
+            />
           </div>
         )}
       </div>
